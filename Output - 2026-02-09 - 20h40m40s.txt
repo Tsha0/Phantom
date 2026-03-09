@@ -1,0 +1,54 @@
+Timestamp: 2026-02-09 20:40:50
+Port selected: /dev/cu.usbmodem1101
+Output Name                  | Reading
+-----------------------------|----------------
+Servo PV Openness (%)        | 10.0
+Servo CR1 Openness (%)       | 10.0
+Servo CR2 Openness (%)       | 10.0
+Left Pump Rate (L/min)       | 10.0
+Right Pump Rate (L/min)      | 10.0
+Fluid Temperature (°C)       | 10.0 
+FL1 Rate (L/min)             | t(s):0.000
+FL2 Rate (L/min)             | 
+FL3 Rate (L/min)             | 
+P1 Pressure (mmHg)           | 
+P2 Pressure (mmHg)           | 
+P3 Pressure (mmHg)           | 
+-----------------------------|----------------
+
+Timestamp: 2026-02-09 20:41:53
+Port selected: /dev/cu.usbmodem1101
+Output Name                  | Reading
+-----------------------------|----------------
+Servo PV Openness (%)        | 20.0
+Servo CR1 Openness (%)       | 20.0
+Servo CR2 Openness (%)       | 20.0
+Left Pump Rate (L/min)       | 10.0
+Right Pump Rate (L/min)      | 10.0
+Fluid Temperature (°C)       | 10.0 
+FL1 Rate (L/min)             | 
+FL2 Rate (L/min)             | 
+FL3 Rate (L/min)             | 
+P1 Pressure (mmHg)           | 
+P2 Pressure (mmHg)           | 
+P3 Pressure (mmHg)           | 
+-----------------------------|----------------
+
+Timestamp: 2026-02-09 20:47:16
+Port selected: /dev/cu.usbmodem1101
+Output Name                  | Reading
+-----------------------------|----------------
+Servo PV Openness (%)        | 20.0
+Servo CR1 Openness (%)       | 20.0
+Servo CR2 Openness (%)       | 20.0
+Left Pump Rate (L/min)       | 10.0
+Right Pump Rate (L/min)      | 10.0
+Fluid Temperature (°C)       | 10.0 
+FL1 Rate (L/min)             | Flow D8 (L/min): 0.000
+FL2 Rate (L/min)             | 
+FL3 Rate (L/min)             | 
+P1 Pressure (mmHg)           | 
+P2 Pressure (mmHg)           | 
+P3 Pressure (mmHg)           | 
+-----------------------------|----------------
+

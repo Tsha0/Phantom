@@ -1,0 +1,21 @@
+
+Timestamp: 2026-01-22 18:47:38
+Port: demo
+==================================================
+Output Name                  | Reading
+-----------------------------|------------------
+Servo PV Openness (%)        | 23.0
+Servo CR1 Openness (%)       | 50.0
+Servo CR2 Openness (%)       | 34.0
+Left Pump Rate (L/min)       | 34.0
+Right Pump Rate (L/min)      | 24.0
+Fluid Temperature (°C)       | 2.0
+-----------------------------|------------------
+FL1 Flow Rate (L/min)        | 1.46
+FL2 Flow Rate (L/min)        | 1.98
+FL3 Flow Rate (L/min)        | 1.18
+P1 Pressure (mmHg)           | 319.9
+P2 Pressure (mmHg)           | 546.8
+P3 Pressure (mmHg)           | 688.3
+==================================================
+

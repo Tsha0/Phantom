@@ -121,6 +121,16 @@ float readPressureSensor(int pin) {
   float voltage = sensorValue * (Vcc / 1023.0); // Convert the value to voltage
 
   // Assuming a 0.5-4.5V output range for 0-30 PSI
+
+
+  /*
+  ****************************************************************************
+  potential problem here
+
+  The pressure sensors you're using output 0–10 PSI (according to the README specs), 
+  but the Arduino code is calibrated to interpret the voltage range as 0–30 PSI.
+  
+  */
   float psi;
   if (voltage <= 0.5) {
     psi = 0.0; // Handle error condition or below range

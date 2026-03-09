@@ -1,0 +1,18 @@
+Timestamp: 2026-02-09 20:42:03
+Port selected: /dev/cu.usbmodem1101
+Output Name                  | Reading
+-----------------------------|----------------
+Servo PV Openness (%)        | 20
+Servo CR1 Openness (%)       | 20
+Servo CR2 Openness (%)       | 20
+Left Pump Rate (L/min)       | 10.0
+Right Pump Rate (L/min)      | 10.0
+Fluid Temperature (°C)       | 10.0 
+FL1 Rate (L/min)             | -
+FL2 Rate (L/min)             | -
+FL3 Rate (L/min)             | -
+P1 Pressure (mmHg)           | -
+P2 Pressure (mmHg)           | -
+P3 Pressure (mmHg)           | -
+-----------------------------|----------------
+
