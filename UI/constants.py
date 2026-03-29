@@ -47,43 +47,14 @@ SENSOR_COLORS = {
     "p1":  "#ef4444", "p2":  "#f87171", "p3":  "#dc2626", "p4":  "#fca5a5",
 }
 
-# Valve/servo configuration — 4 valves (CR1-CR4), all 0-100%
-VALVE_CONFIG = {
-    "CR1": {
-        "channel": 0,
-        "pulse_range": (370, 520),
-        "pct_min": 0,
-        "pct_max": 100,
-        "default": 50,
-        "label": "CR1 [PWM Ch 0]",
-    },
-    "CR2": {
-        "channel": 1,
-        "pulse_range": (150, 290),
-        "pct_min": 0,
-        "pct_max": 100,
-        "default": 50,
-        "label": "CR2 [PWM Ch 1]",
-    },
-    "CR3": {
-        "channel": 2,
-        "pulse_range": (260, 410),
-        "pct_min": 0,
-        "pct_max": 100,
-        "default": 50,
-        "label": "CR3 [PWM Ch 2]",
-    },
-    "CR4": {
-        "channel": 3,
-        "pulse_range": (260, 410),
-        "pct_min": 0,
-        "pct_max": 100,
-        "default": 50,
-        "label": "CR4 [PWM Ch 3]",
-    },
-}
+# Servo tick range (uniform for all servos on PCA9685)
+SERVO_TICK_MIN = 200      # closed position
+SERVO_TICK_MAX = 345      # open position
+SERVO_TICK_DEFAULT = 200  # start closed (matches Arduino init)
+SERVO_PORTS = list(range(16))  # PCA9685 channels 0-15
 
-VALVE_NAMES = ["CR1", "CR2", "CR3", "CR4"]
+# Timeout for Arduino READY signal after init sweep
+INIT_TIMEOUT_S = 10
 
 # Sensor data keys in the order returned by Arduino CSV (4 flow + 4 pressure)
 SENSOR_KEYS = ["fl1", "fl2", "fl3", "fl4", "p1", "p2", "p3", "p4"]

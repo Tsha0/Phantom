@@ -141,9 +141,9 @@ class PhantomGUI(tk.Tk):
             bg=BG_CARD, fg=FG_TEXT,
         ).pack(side=tk.LEFT)
 
-        # Valve controls + pin config
+        # Servo control + pin config
         self.control_panel = ControlPanel(
-            sidebar, self._on_conditions_changed,
+            sidebar, self._on_servo_command,
             on_pins_changed=self._on_pins_changed,
         )
         self.control_panel.pack(fill=tk.X, padx=8, pady=4)
@@ -253,10 +253,8 @@ class PhantomGUI(tk.Tk):
 
     # --- Callbacks ---
 
-    def _on_conditions_changed(self, *args):
-        # args: cr1, cr2, cr3, cr4, 0, 0
-        conditions = args[:6]
-        self.controller.update_conditions(conditions)
+    def _on_servo_command(self, port, position):
+        self.controller.send_servo_command(port, position)
 
     def _on_pins_changed(self, pin_map: dict):
         self.circuit_panel.set_pin_labels(pin_map)

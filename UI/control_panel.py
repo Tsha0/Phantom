@@ -1,36 +1,33 @@
 import tkinter as tk
 from tkinter import ttk
 from .constants import (
-    VALVE_CONFIG, VALVE_NAMES, BG_PANEL, BG_CARD, FG_TEXT, FG_DIM, ACCENT_BLUE,
+    SERVO_TICK_MIN, SERVO_TICK_MAX, SERVO_TICK_DEFAULT, SERVO_PORTS,
+    BG_PANEL, BG_CARD, FG_TEXT, FG_DIM, ACCENT_BLUE,
     DEFAULT_FLOW_PINS, DEFAULT_PRESSURE_PINS, DIGITAL_PINS, ANALOG_PINS,
     OVERLAY_FLOW_COLOR, OVERLAY_PRESSURE_COLOR,
 )
 
 
 class ControlPanel(tk.Frame):
-    """Valve sliders with manual entry, and sensor pin configuration.
-    Fills the full width of its parent container.
+    """Single-servo control with port selector, position slider, and submit button.
+    Plus sensor pin configuration.
     """
 
-    def __init__(self, parent, on_conditions_changed, on_pins_changed=None):
+    def __init__(self, parent, on_servo_command, on_pins_changed=None):
         super().__init__(parent, bg=BG_PANEL)
-        self._on_conditions_changed = on_conditions_changed
+        self._on_servo_command = on_servo_command
         self._on_pins_changed = on_pins_changed
-        self._slider_vars = {}
-        self._entry_vars = {}
         self._pin_vars = {}
         self._build()
 
     def _build(self):
-        # --- Valve Controls ---
+        # --- Servo Control ---
         tk.Label(
-            self, text="Valve Controls", font=("Segoe UI", 13, "bold"),
+            self, text="Servo Control", font=("Segoe UI", 13, "bold"),
             bg=BG_PANEL, fg=FG_TEXT,
         ).pack(fill=tk.X, padx=8, pady=(10, 4))
 
-        for name in VALVE_NAMES:
-            cfg = VALVE_CONFIG[name]
-            self._build_slider_card(name, cfg)
+        self._build_servo_card()
 
         ttk.Separator(self, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=6, pady=8)
 
@@ -89,83 +86,94 @@ class ControlPanel(tk.Frame):
             combo.grid(row=row, column=3, sticky=tk.EW, pady=1)
             combo.bind("<<ComboboxSelected>>", lambda e: self._on_pin_change())
 
-    def _build_slider_card(self, name, cfg):
-        card = tk.Frame(self, bg=BG_CARD, padx=8, pady=6)
+    def _build_servo_card(self):
+        card = tk.Frame(self, bg=BG_CARD, padx=10, pady=8)
         card.pack(fill=tk.X, padx=6, pady=3)
 
-        # Top row: label + entry + % sign
-        top = tk.Frame(card, bg=BG_CARD)
-        top.pack(fill=tk.X)
-        top.columnconfigure(0, weight=1)
+        # Row 1: Port selector
+        port_row = tk.Frame(card, bg=BG_CARD)
+        port_row.pack(fill=tk.X, pady=(0, 6))
 
         tk.Label(
-            top, text=cfg["label"], font=("Segoe UI", 10, "bold"),
+            port_row, text="Port:", font=("Segoe UI", 10, "bold"),
+            bg=BG_CARD, fg=FG_TEXT,
+        ).pack(side=tk.LEFT)
+
+        self._port_var = tk.IntVar(value=0)
+        port_combo = ttk.Combobox(
+            port_row, textvariable=self._port_var,
+            values=SERVO_PORTS, width=4, state="readonly",
+        )
+        port_combo.pack(side=tk.LEFT, padx=(6, 0))
+
+        # Row 2: Position label + entry
+        pos_row = tk.Frame(card, bg=BG_CARD)
+        pos_row.pack(fill=tk.X)
+        pos_row.columnconfigure(0, weight=1)
+
+        tk.Label(
+            pos_row, text="Position:", font=("Segoe UI", 10, "bold"),
             bg=BG_CARD, fg=FG_TEXT,
         ).grid(row=0, column=0, sticky=tk.W)
 
-        entry_var = tk.StringVar(value=str(cfg["default"]))
-        self._entry_vars[name] = entry_var
-
-        pct_label = tk.Label(
-            top, text="%", font=("Consolas", 10),
-            bg=BG_CARD, fg=FG_DIM,
-        )
-        pct_label.grid(row=0, column=2, sticky=tk.E)
-
+        self._entry_var = tk.StringVar(value=str(SERVO_TICK_DEFAULT))
         entry = tk.Entry(
-            top, textvariable=entry_var, width=4,
+            pos_row, textvariable=self._entry_var, width=5,
             font=("Consolas", 10), bg="#2a2a40", fg=ACCENT_BLUE,
             insertbackground=ACCENT_BLUE, bd=1, relief=tk.FLAT,
             justify=tk.CENTER,
         )
         entry.grid(row=0, column=1, sticky=tk.E, padx=(4, 2))
-        entry.bind("<Return>", lambda e, n=name: self._on_entry_submit(n))
-        entry.bind("<FocusOut>", lambda e, n=name: self._on_entry_submit(n))
+        entry.bind("<Return>", lambda e: self._on_submit())
 
-        # Slider — fills full width
-        var = tk.IntVar(value=cfg["default"])
-        self._slider_vars[name] = var
+        tk.Label(
+            pos_row, text="ticks", font=("Consolas", 10),
+            bg=BG_CARD, fg=FG_DIM,
+        ).grid(row=0, column=2, sticky=tk.E)
 
+        # Row 3: Slider
+        self._slider_var = tk.IntVar(value=SERVO_TICK_DEFAULT)
         slider = ttk.Scale(
             card,
-            from_=cfg["pct_min"],
-            to=cfg["pct_max"],
+            from_=SERVO_TICK_MIN,
+            to=SERVO_TICK_MAX,
             orient=tk.HORIZONTAL,
-            variable=var,
-            command=lambda v, n=name: self._on_slider_move(n),
+            variable=self._slider_var,
+            command=self._on_slider_move,
         )
         slider.pack(fill=tk.X, pady=(4, 2))
-        slider.bind("<ButtonRelease-1>", lambda e: self._send_conditions())
 
         # Info line
-        pmin, pmax = cfg["pulse_range"]
         tk.Label(
             card,
-            text=f"Pulse {pmin}-{pmax}  \u00b7  Range {cfg['pct_min']}-{cfg['pct_max']}%",
+            text=f"Range {SERVO_TICK_MIN}-{SERVO_TICK_MAX} ticks  \u00b7  {SERVO_TICK_MIN}=closed  {SERVO_TICK_MAX}=open",
             font=("Consolas", 8), bg=BG_CARD, fg=FG_DIM,
         ).pack(fill=tk.X, anchor=tk.W)
 
-    def _on_slider_move(self, name):
-        val = self._slider_vars[name].get()
-        self._entry_vars[name].set(str(val))
+        # Row 4: Submit button
+        self._submit_btn = tk.Button(
+            card, text="Send", font=("Segoe UI", 10, "bold"),
+            bg=ACCENT_BLUE, fg="#ffffff", activebackground="#4a90d9",
+            bd=0, padx=14, pady=6, cursor="hand2",
+            command=self._on_submit,
+        )
+        self._submit_btn.pack(fill=tk.X, pady=(8, 0))
 
-    def _on_entry_submit(self, name):
+    def _on_slider_move(self, value):
+        self._entry_var.set(str(self._slider_var.get()))
+
+    def _on_submit(self):
         try:
-            val = int(self._entry_vars[name].get())
-            cfg = VALVE_CONFIG[name]
-            val = max(cfg["pct_min"], min(cfg["pct_max"], val))
-            self._slider_vars[name].set(val)
-            self._entry_vars[name].set(str(val))
-            self._send_conditions()
+            position = int(self._entry_var.get())
         except ValueError:
-            self._entry_vars[name].set(str(self._slider_vars[name].get()))
+            position = self._slider_var.get()
 
-    def _send_conditions(self):
-        try:
-            values = [self._slider_vars[n].get() for n in VALVE_NAMES]
-        except tk.TclError:
-            return
-        self._on_conditions_changed(*values, 0, 0)
+        position = max(SERVO_TICK_MIN, min(SERVO_TICK_MAX, position))
+        self._slider_var.set(position)
+        self._entry_var.set(str(position))
+
+        port = self._port_var.get()
+        self._on_servo_command(port, position)
 
     def _on_pin_change(self):
         if self._on_pins_changed:
@@ -174,9 +182,3 @@ class ControlPanel(tk.Frame):
 
     def get_pin_assignments(self) -> dict:
         return {k: v.get() for k, v in self._pin_vars.items()}
-
-    def get_conditions(self):
-        try:
-            return tuple(self._slider_vars[n].get() for n in VALVE_NAMES) + (0, 0)
-        except tk.TclError:
-            return (50, 50, 50, 50, 0, 0)

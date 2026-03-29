@@ -5,7 +5,7 @@ from tkinter import ttk
 
 # Add project root to path so we can import from Phantom_UI.py
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-from Phantom_UI import PhantomController, list_serial_ports
+from PhantomController import PhantomController, list_serial_ports
 
 
 class PortSelectionDialog(tk.Toplevel):

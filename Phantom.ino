@@ -1,7 +1,7 @@
 /*
   Phantom — Dynamic Ventricular Phantom firmware
 
-  Servo motors (PCA9685 I2C PWM driver):
+  Servo motors (PCA9685 I2C PWM driver, channels 0-15):
     CR1 (ch 0)    CR2 (ch 1)    CR3 (ch 2)    CR4 (ch 3)
 
   Flow sensors (digital interrupt, YF-S401 — 5880 pulses/L):
@@ -11,26 +11,28 @@
     P1 — A0    P2 — A1    P3 — A2    P4 — A3
 
   Serial protocol:
-    RX  "READ\n"                              → TX sensor CSV
-    RX  "cr1,cr2,cr3,cr4,...\n"               → adjust servos (0-100 %)
-    TX  "fl1,fl2,fl3,fl4,p1,p2,p3,p4\n"      → CSV in L/min and mmHg
+    RX  "READ\n"                        → TX sensor CSV
+    RX  "servo <port> <position>\n"     → move one servo (port 0-15, position 200-345 ticks)
+    TX  "fl1,fl2,fl3,fl4,p1,p2,p3,p4\n"→ CSV in L/min and mmHg
+    TX  "READY\n"                       → sent once after init sweep completes
 */
 
 #include <Adafruit_PWMServoDriver.h>
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
-#define SERVO_CR1 0
-#define SERVO_CR2 1
-#define SERVO_CR3 2
-#define SERVO_CR4 3
+// Servo tick range (uniform for all servos)
+const int SERVO_CLOSE = 200;
+const int SERVO_OPEN  = 345;
+
+// Non-blocking gradual movement state (16 PCA9685 channels)
+int currentPos[16];
+int targetPos[16];
+unsigned long lastStepTime[16];
+const unsigned long STEP_INTERVAL_MS = 10;
 
 const int flowSensorPins[] = {8, 7, 5, 3};
 const int pressureSensorPins[] = {A0, A1, A2, A3};
-
-// Servo pulse ranges (0% → min, 100% → max)
-const int servoPulseMin[] = {370, 150, 260, 260};
-const int servoPulseMax[] = {520, 290, 410, 410};
 
 const float PULSES_PER_LITER = 5880.0;
 const float PSI_TO_MMHG = 51.715;
@@ -58,15 +60,60 @@ void setup() {
     pinMode(flowSensorPins[i], INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(flowSensorPins[i]), isrFuncs[i], RISING);
   }
+
+  // Initialize all channel tracking to closed position
+  for (int i = 0; i < 16; i++) {
+    currentPos[i] = SERVO_CLOSE;
+    targetPos[i]  = SERVO_CLOSE;
+    lastStepTime[i] = 0;
+  }
+
+  // Initialization sweep: close -> open -> close on channels 0-3
+  for (int tick = SERVO_CLOSE; tick <= SERVO_OPEN; tick++) {
+    for (int i = 0; i < 4; i++) {
+      pwm.setPWM(i, 0, tick);
+    }
+    delay(10);
+  }
+  for (int tick = SERVO_OPEN; tick >= SERVO_CLOSE; tick--) {
+    for (int i = 0; i < 4; i++) {
+      pwm.setPWM(i, 0, tick);
+    }
+    delay(10);
+  }
+
+  // All servos now at SERVO_CLOSE
+  for (int i = 0; i < 4; i++) {
+    currentPos[i] = SERVO_CLOSE;
+    targetPos[i]  = SERVO_CLOSE;
+  }
+
+  Serial.println("READY");
 }
 
 void loop() {
+  // Process incoming serial commands
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
+    command.trim();
     if (command == "READ") {
       readAndSendSensorData();
-    } else {
-      adjustServos(command);
+    } else if (command.startsWith("servo ")) {
+      parseServoCommand(command);
+    }
+  }
+
+  // Non-blocking gradual servo movement
+  unsigned long now = millis();
+  for (int i = 0; i < 16; i++) {
+    if (currentPos[i] != targetPos[i] && (now - lastStepTime[i] >= STEP_INTERVAL_MS)) {
+      if (currentPos[i] < targetPos[i]) {
+        currentPos[i]++;
+      } else {
+        currentPos[i]--;
+      }
+      pwm.setPWM(i, 0, currentPos[i]);
+      lastStepTime[i] = now;
     }
   }
 }
@@ -107,27 +154,16 @@ float readPressureSensor(int pin) {
   return psi * PSI_TO_MMHG;
 }
 
-void adjustServos(String conditions) {
-  // Parse up to 4 comma-separated servo percentages
-  int pos[4] = {0, 0, 0, 0};
-  int start = 0;
-  for (int i = 0; i < 4; i++) {
-    int comma = conditions.indexOf(',', start);
-    if (comma == -1 && i < 3) {
-      // Fewer than 4 values — use what we have
-      pos[i] = conditions.substring(start).toInt();
-      break;
-    }
-    if (i < 3) {
-      pos[i] = conditions.substring(start, comma).toInt();
-      start = comma + 1;
-    } else {
-      pos[i] = conditions.substring(start).toInt();
-    }
-  }
+void parseServoCommand(String command) {
+  // Format: "servo <port> <position>"
+  int firstSpace = command.indexOf(' ', 6);
+  if (firstSpace == -1) return;
 
-  for (int i = 0; i < 4; i++) {
-    pos[i] = constrain(pos[i], 0, 100);
-    pwm.setPWM(i, 0, map(pos[i], 0, 100, servoPulseMin[i], servoPulseMax[i]));
-  }
+  int port = command.substring(6, firstSpace).toInt();
+  int position = command.substring(firstSpace + 1).toInt();
+
+  if (port < 0 || port > 15) return;
+  position = constrain(position, SERVO_CLOSE, SERVO_OPEN);
+
+  targetPos[port] = position;
 }
