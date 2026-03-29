@@ -1,225 +1,306 @@
+#!/usr/bin/env python3
 """
-The Python script is designed to communicate with an Arduino device, sending specific 
-commands and reading back sensor data sent from the Arduino. The Arduino sketch has
-functionality for reading from flow and pressure sensors, controlling servo positions 
-based on commands received via Serial communication, and sending the sensor data back 
-through Serial. This design is meant to work together, with the Python script acting
-as a user interface and command center, while the Arduino handles direct interaction 
-with the hardware.
+Phantom UI — serial interface for the Dynamic Ventricular Phantom.
 
-Must install this first : pip install pyserial where the VSC is located
+Controls servo motors and reads flow/pressure sensor data from an Arduino.
+Supports cross-platform serial port selection, demo mode, and data logging.
+
+Usage:
+    python Phantom_UI.py
+
+Requirements:
+    pip install pyserial
 """
-
-import serial
-import time
-import serial.tools.list_ports
-from datetime import datetime
 import os
+import random
+import serial
+import serial.tools.list_ports
+import sys
+import time
+from datetime import datetime
 
-# List available COM ports and allow the user to select the Arduino's COM port
-ports = serial.tools.list_ports.comports()
-portsList = []
 
-print("Available COM Ports:")
-for one in ports:
-    portsList.append(str(one))
-    print(str(one))
+class PhantomController:
+    """Controller class for the Phantom Arduino device."""
 
-com = input("Select COM Port for Arduino (e.g., 3 for COM3): ")
+    def __init__(self, port=None, demo_mode=False):
+        self.demo_mode = demo_mode
+        self.port = port
+        self.ser = None
+        self.conditions = None
 
-global use
-use = ""
-
-for i in range(len(portsList)):
-    if portsList[i].startswith("COM" + str(com)):
-        use = "COM" + str(com)
-        print("Selected port:", use)
-        print("Please select the same port in the Arduino UI!")
-        print()
-        break
-
-if use == "":
-    print("COM port not found. Please check the connection and try again.")
-    print()
-    exit()
-
-# Setup serial connection with the selected COM port
-ser = serial.Serial(use, 9600, timeout=1)
-time.sleep(2)  # Wait for the connection to establish 
-
-def request_sensor_data():
-    ser.write("READ\n".encode())
-    while ser.in_waiting <= 0:
-        time.sleep(0.1)
-    data = ser.readline().decode().strip()
-    return data 
-
-def update_conditions(conditions):
-    # Unpack the conditions
-    servo1, servo2, servo3, pump_rate_left, pump_rate_right, fluid_temp = conditions
-
-    # Convert servo positions from float to integer if necessary
-    servo1 = int(servo1)
-    servo2 = int(servo2)
-    servo3 = int(servo3)
-
-    # Construct the command string with all conditions, including servo positions
-    command = f"{servo1},{servo2},{servo3},{pump_rate_left},{pump_rate_right},{fluid_temp}\n"
-    
-    # Send the command to Arduino
-    ser.write(command.encode())
-    ser.flush()  # Ensure the command is processed
-    time.sleep(1)  # Wait for the Arduino to respond
-
-    # Attempt to read the response from Arduino
-    response = ser.readline().decode().strip()
-    print(f"Arduino response: {response}")
-
-def collect_and_send_conditions():
-    inputs = {
-        "Enter servo PV position (10-100%)": None,  # Note the change in prompt
-        "Enter servo CR1 position (0-100%)": None,
-        "Enter servo CR2 position (10-100%)": None,  # Note the change in prompt
-        "Enter left pump rate (L/min)": None,
-        "Enter right pump rate (L/min)": None,
-        "Enter fluid temperature in Celsius": None
-    }
-    
-    for prompt in inputs:
-        while True:
-            user_input = input(f"{prompt}: ")
+        if not demo_mode and port:
             try:
-                value = float(user_input)  # Attempt to convert input to float
-                
-                # Special check for servo PV and CR2 positions to be within 10-100%
-                if "PV position" in prompt or "CR2 position" in prompt:
-                    if not (10 <= value <= 100):
-                        print("Error: Servo PV and CR2 positions must be between 10 and 100%.")
-                        continue
-                
-                # Check for servo CR1 positions to be within 0-100%
-                elif "CR1 position" in prompt:
-                    if not (0 <= value <= 100):
-                        print("Error: Servo CR1 position must be between 0 and 100%.")
-                        continue
-                
-                # Check for pump rates and fluid temperature to be positive
-                elif ("rate" in prompt or "temperature" in prompt) and value < 0:
-                    print("Error: Pump rates and fluid temperature must be positive.")
+                self.ser = serial.Serial(port, 9600, timeout=1)
+                time.sleep(2)  # Wait for Arduino to reset after serial connection
+                print(f"Connected to {port}")
+            except serial.SerialException as e:
+                print(f"Error opening serial port: {e}")
+                sys.exit(1)
+
+    def request_sensor_data(self):
+        """Request and return sensor data from Arduino or generate mock data."""
+        if self.demo_mode:
+            flows = [round(random.uniform(0.5, 2.0), 2) for _ in range(4)]
+            pressures = [round(random.uniform(5, 15) * 51.715, 1) for _ in range(4)]
+            return ",".join(str(v) for v in flows + pressures)
+
+        self.ser.write(b"READ\n")
+        timeout_counter = 0
+        while self.ser.in_waiting <= 0:
+            time.sleep(0.1)
+            timeout_counter += 1
+            if timeout_counter > 50:  # 5 second timeout
+                return "0,0,0,0,0,0,0,0"
+        data = self.ser.readline().decode().strip()
+        return data
+
+    def update_conditions(self, conditions):
+        """Send new conditions to Arduino. Accepts 4-6 values (cr1,cr2,cr3,cr4,...)."""
+        values = [int(v) for v in conditions[:4]]
+        extra = [str(v) for v in conditions[4:]]
+        command = ",".join(str(v) for v in values) + ("," + ",".join(extra) if extra else "") + "\n"
+
+        if self.demo_mode:
+            print(f"[Demo] Sending command: {command.strip()}")
+            return
+
+        self.ser.write(command.encode())
+        self.ser.flush()
+        time.sleep(1)
+
+        # Read any response
+        if self.ser.in_waiting > 0:
+            response = self.ser.readline().decode().strip()
+            if response:
+                print(f"Arduino response: {response}")
+
+    def close(self):
+        """Close serial connection."""
+        if self.ser and self.ser.is_open:
+            self.ser.close()
+
+
+def list_serial_ports():
+    """List available serial ports."""
+    ports = list(serial.tools.list_ports.comports())
+
+    # Filter for common macOS Arduino port patterns
+    arduino_ports = []
+    other_ports = []
+
+    for p in ports:
+        device = p.device
+        # Common Arduino patterns on macOS
+        if any(pattern in device for pattern in ['usbmodem', 'usbserial', 'wchusbserial', 'SLAB']):
+            arduino_ports.append(p)
+        else:
+            other_ports.append(p)
+
+    return arduino_ports + other_ports
+
+
+def select_port():
+    """Interactive port selection."""
+    print("\n" + "=" * 50)
+    print("Phantom UI - Select Serial Port")
+    print("=" * 50)
+
+    ports = list_serial_ports()
+
+    if not ports:
+        print("\nNo serial ports detected.")
+        print("Options:")
+        print("  [d] Run in demo mode (no hardware required)")
+        print("  [q] Quit")
+        print()
+        choice = input("Selection: ").strip().lower()
+        if choice == 'd':
+            return None, True  # Demo mode
+        else:
+            sys.exit(0)
+
+    print("\nAvailable serial ports:")
+    for idx, p in enumerate(ports):
+        # Mark likely Arduino ports
+        marker = " <-- likely Arduino" if 'usbmodem' in p.device or 'usbserial' in p.device else ""
+        print(f"  [{idx}] {p.device}{marker}")
+        if p.description and p.description != 'n/a':
+            print(f"       {p.description}")
+
+    print()
+    print("  [d] Run in demo mode (no hardware)")
+    print("  [q] Quit")
+    print()
+
+    choice = input("Select port number or option: ").strip().lower()
+
+    if choice == 'q':
+        sys.exit(0)
+    elif choice == 'd':
+        return None, True  # Demo mode
+    elif choice.isdigit():
+        idx = int(choice)
+        if 0 <= idx < len(ports):
+            return ports[idx].device, False
+        else:
+            print("Invalid selection.")
+            sys.exit(1)
+    else:
+        print("Invalid selection.")
+        sys.exit(1)
+
+
+def collect_conditions():
+    """Collect servo positions and other conditions from user."""
+    prompts = [
+        ("Servo PV position (10-100%)", 10, 100),
+        ("Servo CR1 position (0-100%)", 0, 100),
+        ("Servo CR2 position (10-100%)", 10, 100),
+        ("Left pump rate (L/min)", 0, None),
+        ("Right pump rate (L/min)", 0, None),
+        ("Fluid temperature (°C)", 0, None),
+    ]
+
+    values = []
+    for prompt, min_val, max_val in prompts:
+        while True:
+            try:
+                user_input = input(f"{prompt}: ")
+                value = float(user_input)
+
+                if min_val is not None and value < min_val:
+                    print(f"Error: Value must be at least {min_val}")
                     continue
-                
-                inputs[prompt] = value  # Store valid input
-                break  # Exit loop on valid input
-                
+                if max_val is not None and value > max_val:
+                    print(f"Error: Value must be at most {max_val}")
+                    continue
+
+                values.append(value)
+                break
             except ValueError:
-                print("Invalid input. Please enter a valid number.")
+                print("Invalid input. Please enter a number.")
 
-    # Directly unpack and return validated values
-    servo1, servo2, servo3, pump_rate_left, pump_rate_right, fluid_temp = tuple(inputs.values())
-    
-    return servo1, servo2, servo3, pump_rate_left, pump_rate_right, fluid_temp
+    return tuple(values)
 
 
+def format_table(conditions, sensor_data=",,,,,", port="demo"):
+    """Format conditions and sensor data into a readable table."""
+    parts = sensor_data.split(',')
+    if len(parts) != 6:
+        parts = ['', '', '', '', '', '']
 
-def format_table(conditions, sensor_data=",,,,,"):
-    # Formats conditions and sensor data into a table format. If sensor_data is not provided, leaves blanks.
-    flow1, flow2, flow3, pressure1, pressure2, pressure3 = sensor_data.split(',')
-    servo1, servo2, servo3, pump_rate_left, pump_rate_right, fluid_temp = conditions
+    flow1, flow2, flow3, pressure1, pressure2, pressure3 = parts
+    servo1, servo2, servo3, pump_left, pump_right, fluid_temp = conditions
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    output = (
-        f"Timestamp: {timestamp}\n"
-        f"Port selected: {use}\n"
-        "Output Name                  | Reading\n"
-        "-----------------------------|----------------\n"
-        f"Servo PV Openness (%)        | {servo1}\n"
-        f"Servo CR1 Openness (%)       | {servo2}\n"
-        f"Servo CR2 Openness (%)       | {servo3}\n"
-        f"Left Pump Rate (L/min)       | {pump_rate_left}\n"
-        f"Right Pump Rate (L/min)      | {pump_rate_right}\n"
-        f"Fluid Temperature (°C)       | {fluid_temp} \n"
-        f"FL1 Rate (L/min)             | {flow1}\n"
-        f"FL2 Rate (L/min)             | {flow2}\n"
-        f"FL3 Rate (L/min)             | {flow3}\n"
-        f"P1 Pressure (mmHg)           | {pressure1}\n"
-        f"P2 Pressure (mmHg)           | {pressure2}\n"
-        f"P3 Pressure (mmHg)           | {pressure3}\n"
-        "-----------------------------|----------------\n"
-    )
+
+    output = f"""
+Timestamp: {timestamp}
+Port: {port}
+{'=' * 50}
+Output Name                  | Reading
+-----------------------------|------------------
+Servo PV Openness (%)        | {servo1}
+Servo CR1 Openness (%)       | {servo2}
+Servo CR2 Openness (%)       | {servo3}
+Left Pump Rate (L/min)       | {pump_left}
+Right Pump Rate (L/min)      | {pump_right}
+Fluid Temperature (°C)       | {fluid_temp}
+-----------------------------|------------------
+FL1 Flow Rate (L/min)        | {flow1}
+FL2 Flow Rate (L/min)        | {flow2}
+FL3 Flow Rate (L/min)        | {flow3}
+P1 Pressure (mmHg)           | {pressure1}
+P2 Pressure (mmHg)           | {pressure2}
+P3 Pressure (mmHg)           | {pressure3}
+{'=' * 50}
+"""
     return output
 
-def beta_run(conditions):
 
-    update_conditions(conditions)
-
-    # Generate and print the table with current conditions
-    output = format_table((int(conditions[0]), int(conditions[1]), int(conditions[2]), float(conditions[3]), float(conditions[4]), float(conditions[5])), '-,-,-,-,-,-')
-    print(output)
-
-    # Define the beta output filename
+def get_output_filename(prefix="Output"):
+    """Generate a timestamped output filename in the script's directory."""
     script_dir = os.path.dirname(os.path.realpath(__file__))
-    beta_filename = os.path.join(script_dir, datetime.now().strftime("Beta Output - %Y-%m-%d - %Hh%Mm%Ss.txt"))
-
-    # Log the output to the beta-specific file
-    with open(beta_filename, "a") as file:
-        file.write(output + "\n")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    return os.path.join(script_dir, f"{prefix}_{timestamp}.txt")
 
 
 def main():
-    # Setup initial conditions
-    conditions = collect_and_send_conditions()
+    # Select port or demo mode
+    port, demo_mode = select_port()
 
-    # initialize the positions of the servo motors
-    update_conditions(conditions)
+    mode_str = "Demo Mode" if demo_mode else f"Connected to {port}"
+    print(f"\n{mode_str}")
+    print("-" * 50)
 
-    # Get the directory of the current script
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    
-    # Filename for storing the output, ensuring it's created in the same folder as the script
-    filename = os.path.join(script_dir, datetime.now().strftime("Output - %Y-%m-%d - %Hh%Mm%Ss.txt"))
-    
+    # Initialize controller
+    controller = PhantomController(port=port, demo_mode=demo_mode)
+
+    # Collect initial conditions
+    print("\nEnter initial conditions:")
+    conditions = collect_conditions()
+    controller.update_conditions(conditions)
+    controller.conditions = conditions
+
+    # Setup output file
+    output_file = get_output_filename()
+    print(f"\nLogging to: {output_file}")
+
+    # Main loop
     while True:
-        print("\n1. Get sensor readings")
-        print("2. Update inputted conditions")
-        print("3. Beta run")
+        print("\n" + "-" * 30)
+        print("1. Get sensor readings")
+        print("2. Update conditions")
+        print("3. Beta run (test without logging)")
         print("4. Exit")
-        print()
-        user_choice = input("What would you like to do? ")
-        print()
+        print("-" * 30)
 
-        if user_choice == '1':
-            # Request sensor data and print it
-            sensor_data = request_sensor_data()
-            output = format_table(conditions, sensor_data)
+        choice = input("Select option: ").strip()
+
+        if choice == '1':
+            sensor_data = controller.request_sensor_data()
+            output = format_table(conditions, sensor_data, port or "demo")
             print(output)
-            print()
-            with open(filename, "a") as file:
-                file.write(output + "\n")
-            print("Sensor data received successfully!")
-            print()
-        elif user_choice == '2':
-            # Update conditions
-            conditions = collect_and_send_conditions()
-            update_conditions(conditions)
-            output = format_table(conditions)
-            with open(filename, "a") as file:
-                file.write(output + "\n")
-            print("Conditions updated successfully!")
-            print()
-        elif user_choice == '3':
-            # Beta run
-            beta_run(conditions)
-            print("Beta run executed successfully!")
-            print()
-        elif user_choice == '4':
-            # Exit the program
-            print("Exiting.")
-            print()
-            return
+
+            with open(output_file, "a") as f:
+                f.write(output + "\n")
+            print(f"Data logged to {output_file}")
+
+        elif choice == '2':
+            print("\nEnter new conditions:")
+            conditions = collect_conditions()
+            controller.update_conditions(conditions)
+            controller.conditions = conditions
+
+            output = format_table(conditions, ",,,,,", port or "demo")
+            with open(output_file, "a") as f:
+                f.write(output + "\n")
+            print("Conditions updated and logged.")
+
+        elif choice == '3':
+            print("\n[Beta Run] Testing servo positions...")
+            controller.update_conditions(conditions)
+            output = format_table(conditions, "-,-,-,-,-,-", port or "demo")
+            print(output)
+
+            # Log to separate beta file
+            beta_file = get_output_filename("Beta")
+            with open(beta_file, "a") as f:
+                f.write(output + "\n")
+            print(f"Beta data logged to {beta_file}")
+
+        elif choice == '4':
+            print("\nExiting...")
+            controller.close()
+            break
+
         else:
-            print("Invalid input. Please enter a valid option.")
-            print()
+            print("Invalid option. Please enter 1-4.")
+
 
 if __name__ == "__main__":
-    main()
-
-
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\nInterrupted. Exiting...")
+        sys.exit(0)
