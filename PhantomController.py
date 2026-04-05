@@ -68,6 +68,7 @@ class PhantomController:
             pressures = [round(random.uniform(5, 15) * 51.715, 1) for _ in range(4)]
             return ",".join(str(v) for v in flows + pressures)
 
+        self.ser.reset_input_buffer()
         self.ser.write(b"READ\n")
         timeout_counter = 0
         while self.ser.in_waiting <= 0:
@@ -88,6 +89,20 @@ class PhantomController:
 
         self.ser.write(command.encode())
         self.ser.flush()
+
+    def update_conditions(self, conditions):
+        """Send servo positions to Arduino based on condition percentages.
+
+        Conditions tuple: (cr1%, cr2%, cr3%, cr4%, pump_left, pump_right, temp)
+        Converts percentage (0-100) to tick range (SERVO_CLOSE=200 to SERVO_OPEN=345).
+        """
+        SERVO_CLOSE = 200
+        SERVO_OPEN = 345
+
+        servo_percentages = conditions[:4]
+        for channel, pct in enumerate(servo_percentages):
+            ticks = int(SERVO_CLOSE + (pct / 100.0) * (SERVO_OPEN - SERVO_CLOSE))
+            self.send_servo_command(channel, ticks)
 
     def close(self):
         """Close serial connection."""

@@ -16,6 +16,7 @@ import serial
 import serial.tools.list_ports
 import sys
 from datetime import datetime
+from PhantomController import PhantomController, list_serial_ports
 
 def select_port():
     """Interactive port selection."""
@@ -71,9 +72,10 @@ def select_port():
 def collect_conditions():
     """Collect servo positions and other conditions from user."""
     prompts = [
-        ("Servo PV position (10-100%)", 10, 100),
         ("Servo CR1 position (0-100%)", 0, 100),
         ("Servo CR2 position (10-100%)", 10, 100),
+        ("Servo CR3 position (10-100%)", 10, 100),
+        ("Servo CR4 position (10-100%)", 10, 100),
         ("Left pump rate (L/min)", 0, None),
         ("Right pump rate (L/min)", 0, None),
         ("Fluid temperature (°C)", 0, None),
@@ -101,14 +103,14 @@ def collect_conditions():
     return tuple(values)
 
 
-def format_table(conditions, sensor_data=",,,,,", port="demo"):
+def format_table(conditions, sensor_data=",,,,,,,", port="demo"):
     """Format conditions and sensor data into a readable table."""
     parts = sensor_data.split(',')
-    if len(parts) != 6:
-        parts = ['', '', '', '', '', '']
+    if len(parts) != 8:
+        parts = ['', '', '', '', '', '', '', '']
 
-    flow1, flow2, flow3, pressure1, pressure2, pressure3 = parts
-    servo1, servo2, servo3, pump_left, pump_right, fluid_temp = conditions
+    flow1, flow2, flow3, flow4, pressure1, pressure2, pressure3, pressure4 = parts
+    servo1, servo2, servo3, servo4, pump_left, pump_right, fluid_temp = conditions
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     output = f"""
@@ -117,9 +119,10 @@ Port: {port}
 {'=' * 50}
 Output Name                  | Reading
 -----------------------------|------------------
-Servo PV Openness (%)        | {servo1}
-Servo CR1 Openness (%)       | {servo2}
-Servo CR2 Openness (%)       | {servo3}
+Servo CR1 Openness (%)       | {servo1}
+Servo CR2 Openness (%)       | {servo2}
+Servo CR3 Openness (%)       | {servo3}
+Servo CR4 Openness (%)       | {servo4}
 Left Pump Rate (L/min)       | {pump_left}
 Right Pump Rate (L/min)      | {pump_right}
 Fluid Temperature (°C)       | {fluid_temp}
@@ -127,9 +130,11 @@ Fluid Temperature (°C)       | {fluid_temp}
 FL1 Flow Rate (L/min)        | {flow1}
 FL2 Flow Rate (L/min)        | {flow2}
 FL3 Flow Rate (L/min)        | {flow3}
+FL4 Flow Rate (L/min)        | {flow4}
 P1 Pressure (mmHg)           | {pressure1}
 P2 Pressure (mmHg)           | {pressure2}
 P3 Pressure (mmHg)           | {pressure3}
+P4 Pressure (mmHg)           | {pressure4}
 {'=' * 50}
 """
     return output
@@ -189,7 +194,7 @@ def main():
             controller.update_conditions(conditions)
             controller.conditions = conditions
 
-            output = format_table(conditions, ",,,,,", port or "demo")
+            output = format_table(conditions, ",,,,,,,", port or "demo")
             with open(output_file, "a") as f:
                 f.write(output + "\n")
             print("Conditions updated and logged.")
@@ -197,7 +202,7 @@ def main():
         elif choice == '3':
             print("\n[Beta Run] Testing servo positions...")
             controller.update_conditions(conditions)
-            output = format_table(conditions, "-,-,-,-,-,-", port or "demo")
+            output = format_table(conditions, "-,-,-,-,-,-,-,-", port or "demo")
             print(output)
 
             # Log to separate beta file
