@@ -11,10 +11,12 @@
     P1 — A0    P2 — A1    P3 — A2    P4 — A3
 
   Serial protocol:
-    RX  "READ\n"                        → TX sensor CSV
+    RX  "READ\n"                        → TX latest cached sensor CSV
     RX  "servo <port> <position>\n"     → move one servo (port 0-15, position 200-345 ticks)
     TX  "fl1,fl2,fl3,fl4,p1,p2,p3,p4\n"→ CSV in L/min and mmHg
     TX  "READY\n"                       → sent once after init sweep completes
+
+  All sensor reading and servo movement are non-blocking (millis-based).
 */
 
 #include <Adafruit_PWMServoDriver.h>
@@ -50,6 +52,12 @@ void pulseCounterFL4() { pulseCount[3]++; }
 
 typedef void (*ISR_FUNC)();
 ISR_FUNC isrFuncs[] = {pulseCounterFL1, pulseCounterFL2, pulseCounterFL3, pulseCounterFL4};
+
+// Cached sensor values (updated every SENSOR_INTERVAL_MS)
+float latestFlow[4] = {0, 0, 0, 0};
+float latestPressure[4] = {0, 0, 0, 0};
+unsigned long lastSensorUpdate = 0;
+const unsigned long SENSOR_INTERVAL_MS = 1000;
 
 void setup() {
   Serial.begin(9600);
@@ -88,23 +96,42 @@ void setup() {
     targetPos[i]  = SERVO_CLOSE;
   }
 
+  lastSensorUpdate = millis();
   Serial.println("READY");
 }
 
 void loop() {
-  // Process incoming serial commands
+  unsigned long now = millis();
+
+  // 1. Process incoming serial commands
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
     command.trim();
     if (command == "READ") {
-      readAndSendSensorData();
+      sendSensorData();
     } else if (command.startsWith("servo ")) {
       parseServoCommand(command);
     }
   }
 
-  // Non-blocking gradual servo movement
-  unsigned long now = millis();
+  // 2. Non-blocking sensor update (every 1 second)
+  if (now - lastSensorUpdate >= SENSOR_INTERVAL_MS) {
+    noInterrupts();
+    int counts[4];
+    for (int i = 0; i < 4; i++) {
+      counts[i] = pulseCount[i];
+      pulseCount[i] = 0;
+    }
+    interrupts();
+
+    for (int i = 0; i < 4; i++) {
+      latestFlow[i] = max(counts[i] / (PULSES_PER_LITER / 60.0), 0.0);
+      latestPressure[i] = max(readPressureSensor(pressureSensorPins[i]), 0.0);
+    }
+    lastSensorUpdate = now;
+  }
+
+  // 3. Non-blocking gradual servo movement
   for (int i = 0; i < 16; i++) {
     if (currentPos[i] != targetPos[i] && (now - lastStepTime[i] >= STEP_INTERVAL_MS)) {
       if (currentPos[i] < targetPos[i]) {
@@ -118,22 +145,15 @@ void loop() {
   }
 }
 
-void readAndSendSensorData() {
-  for (int i = 0; i < 4; i++) pulseCount[i] = 0;
-
-  interrupts();
-  delay(1000);
-  noInterrupts();
-
+void sendSensorData() {
   String out = "";
   for (int i = 0; i < 4; i++) {
-    float flow = max(pulseCount[i] / (PULSES_PER_LITER / 60.0), 0.0);
     if (i > 0) out += ",";
-    out += String(flow);
+    out += String(latestFlow[i]);
   }
   for (int i = 0; i < 4; i++) {
     out += ",";
-    out += String(max(readPressureSensor(pressureSensorPins[i]), 0.0));
+    out += String(latestPressure[i]);
   }
   Serial.println(out);
 }
