@@ -90,6 +90,19 @@ class PhantomController:
         self.ser.write(command.encode())
         self.ser.flush()
 
+    def send_pin_config(self, pin_map: dict):
+        """Send pin assignments to Arduino. Format: SETPINS fl1,fl2,fl3,fl4,p1,p2,p3,p4"""
+        keys = ["fl1", "fl2", "fl3", "fl4", "p1", "p2", "p3", "p4"]
+        values = [pin_map.get(k, "") for k in keys]
+        command = f"SETPINS {','.join(values)}\n"
+
+        if self.demo_mode:
+            print(f"[Demo] {command.strip()}")
+            return
+
+        self.ser.write(command.encode())
+        self.ser.flush()
+
     def update_conditions(self, conditions):
         """Send servo positions to Arduino based on condition percentages.
 

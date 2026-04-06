@@ -49,7 +49,7 @@ SENSOR_COLORS = {
 
 # Servo tick range (uniform for all servos on PCA9685)
 SERVO_TICK_MIN = 200      # closed position
-SERVO_TICK_MAX = 345      # open position
+SERVO_TICK_MAX = 350      # open position
 SERVO_TICK_DEFAULT = 200  # start closed (matches Arduino init)
 SERVO_PORTS = list(range(16))  # PCA9685 channels 0-15
 

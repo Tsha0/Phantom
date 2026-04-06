@@ -33,8 +33,8 @@ int targetPos[16];
 unsigned long lastStepTime[16];
 const unsigned long STEP_INTERVAL_MS = 10;
 
-const int flowSensorPins[] = {8, 7, 5, 3};
-const int pressureSensorPins[] = {A0, A1, A2, A3};
+int flowSensorPins[] = {8, 7, 5, 3};
+int pressureSensorPins[] = {A0, A1, A2, A3};
 
 const float PULSES_PER_LITER = 5880.0;
 const float PSI_TO_MMHG = 51.715;
@@ -111,6 +111,8 @@ void loop() {
       sendSensorData();
     } else if (command.startsWith("servo ")) {
       parseServoCommand(command);
+    } else if (command.startsWith("SETPINS ")) {
+      parseSetPinsCommand(command);
     }
   }
 
@@ -172,6 +174,70 @@ float readPressureSensor(int pin) {
   }
 
   return psi * PSI_TO_MMHG;
+}
+
+int parseDigitalPin(String s) {
+  // "D3" -> 3, "D8" -> 8, etc.
+  if (s.startsWith("D")) return s.substring(1).toInt();
+  return s.toInt();
+}
+
+int parseAnalogPin(String s) {
+  // "A0" -> A0, "A1" -> A1, etc.
+  if (s.startsWith("A")) {
+    int n = s.substring(1).toInt();
+    return A0 + n;
+  }
+  return s.toInt();
+}
+
+void reconfigureFlowInterrupts() {
+  // Detach all existing flow interrupts, reset counts, re-attach
+  for (int i = 0; i < 4; i++) {
+    int intr = digitalPinToInterrupt(flowSensorPins[i]);
+    if (intr != NOT_AN_INTERRUPT) {
+      detachInterrupt(intr);
+    }
+  }
+  for (int i = 0; i < 4; i++) {
+    pulseCount[i] = 0;
+    pinMode(flowSensorPins[i], INPUT_PULLUP);
+    int intr = digitalPinToInterrupt(flowSensorPins[i]);
+    if (intr != NOT_AN_INTERRUPT) {
+      attachInterrupt(intr, isrFuncs[i], RISING);
+    }
+  }
+}
+
+void parseSetPinsCommand(String command) {
+  // Format: "SETPINS fl1,fl2,fl3,fl4,p1,p2,p3,p4"
+  // e.g.    "SETPINS D8,D7,D5,D3,A0,A1,A2,A3"
+  String args = command.substring(8);
+  args.trim();
+
+  int commaIdx;
+  String tokens[8];
+  int tokenCount = 0;
+  while (tokenCount < 8) {
+    commaIdx = args.indexOf(',');
+    if (commaIdx == -1) {
+      tokens[tokenCount++] = args;
+      break;
+    }
+    tokens[tokenCount++] = args.substring(0, commaIdx);
+    args = args.substring(commaIdx + 1);
+  }
+
+  if (tokenCount != 8) return;  // need exactly 8 pin values
+
+  for (int i = 0; i < 4; i++) {
+    flowSensorPins[i] = parseDigitalPin(tokens[i]);
+  }
+  for (int i = 0; i < 4; i++) {
+    pressureSensorPins[i] = parseAnalogPin(tokens[4 + i]);
+  }
+
+  reconfigureFlowInterrupts();
 }
 
 void parseServoCommand(String command) {

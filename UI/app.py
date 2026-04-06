@@ -54,6 +54,12 @@ class PhantomGUI(tk.Tk):
 
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        # Send default pin assignments to Arduino on startup
+        if self.controller:
+            pin_map = self.control_panel.get_pin_assignments()
+            self.controller.send_pin_config(pin_map)
+
         self._poll_sensors()
 
     def _apply_theme(self):
@@ -67,7 +73,13 @@ class PhantomGUI(tk.Tk):
         style.map("TButton",
                   background=[("active", "#454565"), ("pressed", "#505070")])
         style.configure("TSeparator", background="#444466")
-        style.configure("TCombobox", fieldbackground=BG_CARD, foreground=FG_TEXT)
+        style.configure("TCombobox", fieldbackground=BG_CARD, foreground="#000000")
+        style.map("TCombobox",
+                  foreground=[("readonly", "#000000")],
+                  selectforeground=[("readonly", "#000000")])
+        # Style the dropdown listbox
+        self.option_add("*TCombobox*Listbox.foreground", "#000000")
+        self.option_add("*TCombobox*Listbox.background", "#ffffff")
 
     def _build_ui(self):
         self._build_menu()
@@ -258,6 +270,8 @@ class PhantomGUI(tk.Tk):
 
     def _on_pins_changed(self, pin_map: dict):
         self.circuit_panel.set_pin_labels(pin_map)
+        if self.controller:
+            self.controller.send_pin_config(pin_map)
 
     def _on_sensor_click(self, sensor_key):
         SensorGraphWindow.open_for(self, sensor_key)

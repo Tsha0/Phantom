@@ -104,7 +104,7 @@ class ControlPanel(tk.Frame):
             port_row, textvariable=self._port_var,
             values=SERVO_PORTS, width=4, state="readonly",
         )
-        port_combo.pack(side=tk.LEFT, padx=(6, 0))
+        port_combo.pack(side=tk.LEFT, padx=(6, 0), fill=tk.X, expand=True)
 
         # Row 2: Position label + entry
         pos_row = tk.Frame(card, bg=BG_CARD)
@@ -153,11 +153,34 @@ class ControlPanel(tk.Frame):
         # Row 4: Submit button
         self._submit_btn = tk.Button(
             card, text="Send", font=("Segoe UI", 10, "bold"),
-            bg=ACCENT_BLUE, fg="#ffffff", activebackground="#4a90d9",
+            bg=ACCENT_BLUE, fg="#000000", activebackground="#4a90d9",
+            activeforeground="#000000",
             bd=0, padx=14, pady=6, cursor="hand2",
             command=self._on_submit,
         )
         self._submit_btn.pack(fill=tk.X, pady=(8, 0))
+
+        # Set All buttons
+        btn_row = tk.Frame(card, bg=BG_CARD)
+        btn_row.pack(fill=tk.X, pady=(6, 0))
+        btn_row.columnconfigure(0, weight=1)
+        btn_row.columnconfigure(1, weight=1)
+
+        tk.Button(
+            btn_row, text="Set All Closed", font=("Segoe UI", 9, "bold"),
+            bg="#555577", fg="#000000", activebackground="#666688",
+            activeforeground="#000000",
+            bd=0, padx=8, pady=4, cursor="hand2",
+            command=self._set_all_closed,
+        ).grid(row=0, column=0, sticky=tk.EW, padx=(0, 3))
+
+        tk.Button(
+            btn_row, text="Set All Open", font=("Segoe UI", 9, "bold"),
+            bg="#555577", fg="#000000", activebackground="#666688",
+            activeforeground="#000000",
+            bd=0, padx=8, pady=4, cursor="hand2",
+            command=self._set_all_open,
+        ).grid(row=0, column=1, sticky=tk.EW, padx=(3, 0))
 
     def _on_slider_move(self, value):
         self._entry_var.set(str(self._slider_var.get()))
@@ -174,6 +197,20 @@ class ControlPanel(tk.Frame):
 
         port = self._port_var.get()
         self._on_servo_command(port, position)
+
+    def _set_all_closed(self):
+        for port in SERVO_PORTS:
+            self._on_servo_command(port, SERVO_TICK_MIN)
+        self._port_var.set(0)
+        self._slider_var.set(SERVO_TICK_MIN)
+        self._entry_var.set(str(SERVO_TICK_MIN))
+
+    def _set_all_open(self):
+        for port in SERVO_PORTS:
+            self._on_servo_command(port, SERVO_TICK_MAX)
+        self._port_var.set(0)
+        self._slider_var.set(SERVO_TICK_MAX)
+        self._entry_var.set(str(SERVO_TICK_MAX))
 
     def _on_pin_change(self):
         if self._on_pins_changed:
