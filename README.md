@@ -7,7 +7,7 @@ Developing an Arduino-Enabled Dynamic Ventricular Phantom for Evaluating Microva
 Phantom is a real-time cardiovascular flow and pressure simulation system. It uses servo motors as variable-resistance valves and records data from flow and pressure sensors at 4 Hz. The system has two layers:
 
 - **Arduino firmware** (`Phantom.ino`) -- controls 3 servos via an Adafruit PCA9685 I2C driver and reads 3 flow sensors + 3 pressure sensors.
-- **Python interfaces** -- a graphical UI (`Phantom_GUI.py`) for live monitoring and a command-line UI (`Phantom_UI.py`) for quick manual control.
+- **Python GUI** (`Phantom_GUI.py`) for live monitoring, servo control, and session recording.
 
 ## Requirements
 
@@ -102,31 +102,13 @@ The CSV contains columns: `timestamp, fl1, fl2, fl3, p1, p2, p3`.
 - Move the slider or type the value, then press **Send** (or Enter).
 - **Set All Closed / Set All Open** sends the min/max position to all 16 channels at once.
 
-### Command-Line UI
-
-```bash
-python Phantom_UI.py
-```
-
-Interactive menu:
-
-1. **Get sensor readings** -- requests data from the Arduino and prints a formatted table. Results are appended to a timestamped text file.
-2. **Update conditions** -- set servo openness percentages, pump rates, and fluid temperature. The Arduino adjusts servo positions accordingly.
-3. **Beta run** -- test servo positions without affecting the main log file.
-4. **Exit** -- close the connection.
-
-### Calibration Sketches
-
-- `Servo_calibration.ino` -- tune pulse lengths for specific servo angles.
-- `Servo_functionality_test.ino` -- interactive diagnostics with I2C inspection and sweep tests.
 
 ## Project Structure
 
 ```
 Phantom/
   Phantom.ino               # Arduino firmware
-  PhantomController.py       # Shared serial controller class
-  Phantom_UI.py              # Command-line interface
+  PhantomController.py       # Serial controller class
   Phantom_GUI.py             # GUI entry point
   HydraulicDesign.png        # Background image for the GUI
   data/                      # Session CSV output (git-ignored)
@@ -139,10 +121,6 @@ Phantom/
     session.py               # CSV session recorder
     connection.py            # Port selection dialog
     constants.py             # Pins, colors, polling rate, paths
-  Servo_calibration.ino      # Servo pulse-length calibration
-  Servo_functionality_test.ino  # Servo diagnostics
-  tests/
-    test_servo_control.py    # Hardware integration tests
 ```
 
 ## Serial Protocol
@@ -159,8 +137,7 @@ Phantom/
 
 - **No ports detected** -- make sure the Arduino is connected via USB and the correct driver is installed. On macOS, look for `/dev/cu.usbmodem*`.
 - **Sensor readings stuck at 0** -- verify physical wiring matches the pin assignments shown in the GUI sidebar. Use the pin-config dropdowns to reassign if needed.
-- **Servo not moving** -- confirm the PCA9685 is powered (7.4 V external supply) and the I2C address is default (0x40). Run `Servo_functionality_test.ino` to diagnose.
-- **Calibrating servos** -- use `Servo_calibration.ino` to find the exact pulse lengths for your servo model's 0% and 100% positions.
+- **Servo not moving** -- confirm the PCA9685 is powered (7.4 V external supply) and the I2C address is default (0x40).
 
 ## License
 
