@@ -1,7 +1,7 @@
 import csv
 import os
 from datetime import datetime
-from .constants import PROJECT_ROOT, SENSOR_KEYS
+from .constants import DATA_DIR, SENSOR_KEYS
 
 
 class SessionRecorder:
@@ -34,8 +34,9 @@ class SessionRecorder:
         """Write collected data to a timestamped CSV file. Returns path, or None if no data."""
         if not self._data:
             return None
+        os.makedirs(DATA_DIR, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        filename = os.path.join(PROJECT_ROOT, f"Session_{timestamp}.csv")
+        filename = os.path.join(DATA_DIR, f"Session_{timestamp}.csv")
 
         fieldnames = ["timestamp"] + SENSOR_KEYS
         with open(filename, "w", newline="") as f:

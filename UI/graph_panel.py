@@ -9,8 +9,8 @@ FLOW_KEYS = [k for k in SENSOR_KEYS if k.startswith("fl")]
 PRESSURE_KEYS = [k for k in SENSOR_KEYS if k.startswith("p")]
 
 PIN_LABELS = {
-    "fl1": "D8", "fl2": "D7", "fl3": "D5", "fl4": "D3",
-    "p1": "A0", "p2": "A1", "p3": "A2", "p4": "A3",
+    "fl1": "D8", "fl2": "D7", "fl3": "D5",
+    "p1": "A0", "p2": "A1", "p3": "A2",
 }
 
 

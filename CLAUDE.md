@@ -8,11 +8,11 @@ Phantom is an Arduino-based Dynamic Ventricular Phantom that simulates cardiovas
 
 ## Architecture
 
-**Firmware (Arduino C++):** `Phantom.ino` runs on an Arduino Uno with an Adafruit PCA9685 I2C servo driver. It controls 3 servos (PV, CR1, CR2) and reads 3 flow sensors (interrupt-driven pulse counting) and 3 pressure sensors (analog ADC). Communication with the Python UI uses a CSV-based serial protocol.
+**Firmware (Arduino C++):** `Phantom.ino` runs on an Arduino Uno with an Adafruit PCA9685 I2C servo driver. It controls 3 servos (PV, CR1, CR2) and reads 3 flow sensors (interrupt-driven pulse counting) and 3 pressure sensors (analog ADC). Communication with the Python UI uses a CSV-based serial protocol. The UI polls sensors at 4 Hz (250 ms interval).
 
 **Python CLI:** `Phantom_UI.py` provides a `PhantomController` class for serial communication and a CLI menu interface. Supports cross-platform port selection, demo mode (no hardware needed), and data logging.
 
-**Python GUI:** `UI/` package (tkinter + matplotlib). Displays the circuit diagram (`circuit.png`) with live sensor overlays, valve sliders, real-time graphs, and session recording to CSV. Run via `python run_gui.py`. Modules: `app.py` (main window), `circuit_panel.py`, `control_panel.py`, `graph_panel.py`, `session.py`, `connection.py` (imports `PhantomController` from `Phantom_UI.py`), `constants.py`.
+**Python GUI:** `UI/` package (tkinter + matplotlib). Displays the hydraulic design (`HydraulicDesign.png`) with live sensor overlays, valve sliders, real-time graphs, and session recording to CSV (saved in `data/` folder). Run via `python run_gui.py`. Modules: `app.py` (main window), `circuit_panel.py`, `control_panel.py`, `graph_panel.py`, `session.py`, `connection.py` (imports `PhantomController` from `Phantom_UI.py`), `constants.py`.
 
 **Serial Protocol:**
 - UI sends: `servo1%,servo2%,servo3%,pump_left,pump_right,temp`
