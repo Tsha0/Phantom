@@ -35,14 +35,24 @@ Phantom is a real-time cardiovascular flow and pressure simulation system. It us
 
 ### Hydraulic Setup
 
-- 1/4" tubing and Y fittings
-- 1/4" female three-way tee joints and male-to-male straight hex adapters (for mounting pressure sensors)
-- 2 Pulsatile Pumps P-120 (TRANDOMED) for left and right heart simulation.
-  [Pulsatile Pump P-120](https://www.trando-med.com/pulsatile-pump/top-selling-pumps/pulsatile-pump-p-120-for-driving-vascular.html)
+The circuit connects a **Left Pump** and **Right Pump** (Pulsatile Pump P-120, TRANDOMED) through four parallel pathways that model fetal cardiovascular shunts:
 
-![image](https://github.com/Fredmichll/Phantom/assets/149977886/ca6718d9-69b5-4a1f-8225-fc4590b9d5d3)
+| Pathway | Components |
+|---|---|
+| **Pulmonary Veins & Arteries** | Compliance chamber, valve, flow sensor, pressure sensor |
+| **Foramen Ovale** | Valves, flow sensor, pressure sensor |
+| **PDA (Patent Ductus Arteriosus)** | Valve, flow sensor, pressure sensor |
+| **Systemic Veins & Arteries** | Compliance chambers, flow sensor, pressure sensor |
 
-**Figure 2: Hydraulic Configuration**
+Each pathway carries a combination of servo-driven valves (variable resistance), flow sensors, pressure sensors, and compliance chambers. The valves on the Foramen Ovale and PDA pathways simulate the adjustable shunts controlled by the Arduino.
+
+Additional parts:
+- 1/4" tubing, Y fittings, and tee joints
+- 1/4" male-to-male straight hex adapters (for inline pressure sensor mounting)
+
+![Hydraulic Design](HydraulicDesign.png)
+
+**Figure 2: Hydraulic Circuit Design**
 
 ### Arduino Setup
 
