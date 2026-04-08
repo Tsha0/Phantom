@@ -21,15 +21,17 @@ DEFAULT_PRESSURE_PINS = {"p1": "A0", "p2": "A1", "p3": "A2"}
 DIGITAL_PINS = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13"]
 ANALOG_PINS = ["A0", "A1", "A2", "A3", "A4", "A5"]
 
-# Sensor overlay positions on CircuitDesign.png (x_fraction, y_fraction)
-# Matched to the icons on the 4 horizontal paths in the diagram
+# Sensor overlay positions on HydraulicDesign.png (x_fraction, y_fraction)
+# Pulmonary path (top): FL1 leftmost, P1 rightmost (arrow gauge)
+# PDA path (middle):    FL2 at tennis-ball icon, P2 to its right
+# Systemic path (bottom): FL3 and P3
 SENSOR_POSITIONS = {
-    "fl1": (0.33, 0.19),
-    "fl2": (0.29, 0.42),
-    "fl3": (0.42, 0.57),
-    "p1":  (0.50, 0.14),
-    "p2":  (0.47, 0.38),
-    "p3":  (0.55, 0.55),
+    "fl1": (0.22, 0.18),
+    "fl2": (0.35, 0.75),
+    "fl3": (0.23, 0.99),
+    "p1":  (0.78, 0.13),
+    "p2":  (0.64, 0.72),
+    "p3":  (0.75, 0.98),
 }
 
 # Sensor units

@@ -30,7 +30,7 @@ class CircuitPanel(tk.Frame):
         self._build()
 
     def _build(self):
-        self.canvas = tk.Canvas(self, bg="#c8c8c8", highlightthickness=0)
+        self.canvas = tk.Canvas(self, bg="#ffffff", highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
         try:
@@ -58,7 +58,10 @@ class CircuitPanel(tk.Frame):
             return
 
         src_w, src_h = self._raw_image.size
-        scale = min(canvas_w / src_w, canvas_h / src_h)
+        # Reserve bottom padding for sensor overlays below the image
+        bottom_pad = 30
+        avail_h = canvas_h - bottom_pad
+        scale = min(canvas_w / src_w, avail_h / src_h)
         new_w = max(int(src_w * scale), 1)
         new_h = max(int(src_h * scale), 1)
 
@@ -66,7 +69,7 @@ class CircuitPanel(tk.Frame):
         self._photo = ImageTk.PhotoImage(resized)
 
         x_off = (canvas_w - new_w) // 2
-        y_off = (canvas_h - new_h) // 2
+        y_off = 0
         self.canvas.create_image(x_off, y_off, anchor=tk.NW, image=self._photo)
 
         for key, (xf, yf) in SENSOR_POSITIONS.items():
@@ -78,7 +81,7 @@ class CircuitPanel(tk.Frame):
             text = f"{label}: --  {unit}"
 
             color = OVERLAY_FLOW_COLOR if key.startswith("fl") else OVERLAY_PRESSURE_COLOR
-            pad_x, pad_y = 65, 12
+            pad_x, pad_y = 52, 9
 
             bg_id = self.canvas.create_rectangle(
                 x - pad_x, y - pad_y, x + pad_x, y + pad_y,
@@ -86,7 +89,7 @@ class CircuitPanel(tk.Frame):
             )
             text_id = self.canvas.create_text(
                 x, y, text=text, fill=color,
-                font=("Consolas", 9, "bold"), anchor=tk.CENTER,
+                font=("Consolas", 7, "bold"), anchor=tk.CENTER,
             )
             self._bg_ids[key] = bg_id
             self._text_ids[key] = text_id

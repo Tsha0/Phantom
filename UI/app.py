@@ -87,8 +87,8 @@ class PhantomGUI(tk.Tk):
         # Main horizontal split: circuit (80%) | sidebar (20%)
         self._main_frame = tk.Frame(self, bg=BG_DARK)
         self._main_frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
-        self._main_frame.columnconfigure(0, weight=4)
-        self._main_frame.columnconfigure(1, weight=1)
+        self._main_frame.columnconfigure(0, weight=5)
+        self._main_frame.columnconfigure(1, weight=1, minsize=220)
         self._main_frame.rowconfigure(0, weight=1)
 
         # Left: circuit diagram
@@ -107,9 +107,12 @@ class PhantomGUI(tk.Tk):
         sidebar_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self._sidebar = tk.Frame(sidebar_canvas, bg=BG_PANEL)
-        sidebar_canvas.create_window((0, 0), window=self._sidebar, anchor=tk.NW)
+        self._sidebar_win = sidebar_canvas.create_window((0, 0), window=self._sidebar, anchor=tk.NW)
         self._sidebar.bind("<Configure>",
             lambda e: sidebar_canvas.configure(scrollregion=sidebar_canvas.bbox("all")))
+        # Stretch sidebar frame to fill canvas width
+        sidebar_canvas.bind("<Configure>",
+            lambda e: sidebar_canvas.itemconfigure(self._sidebar_win, width=e.width))
         # Enable mousewheel scrolling
         sidebar_canvas.bind_all("<MouseWheel>",
             lambda e: sidebar_canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
@@ -170,7 +173,7 @@ class PhantomGUI(tk.Tk):
         ).pack(anchor=tk.W, pady=(0, 6))
 
         btn_row = tk.Frame(session_frame, bg=BG_CARD)
-        btn_row.pack(fill=tk.X)
+        btn_row.pack(anchor=tk.CENTER)
 
         self._session_btn = tk.Button(
             btn_row, text="\u25b6  Start", font=("Segoe UI", 10, "bold"),
