@@ -10,8 +10,8 @@ CIRCUIT_IMAGE = os.path.join(PROJECT_ROOT, "HydraulicDesign.png")
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 
 # Polling and graph settings
-POLL_INTERVAL_MS = 250   # 4 readings per second
-MAX_GRAPH_POINTS = 80    # 20 seconds at 4Hz
+POLL_INTERVAL_MS = 50    # 20 readings per second
+MAX_GRAPH_POINTS = 400   # 20 seconds at 20Hz
 
 # Default sensor pin assignments (user can change these in the UI)
 DEFAULT_FLOW_PINS = {"fl1": "D8", "fl2": "D7", "fl3": "D5"}
@@ -26,10 +26,10 @@ ANALOG_PINS = ["A0", "A1", "A2", "A3", "A4", "A5"]
 # PDA path (middle):    FL2 at tennis-ball icon, P2 to its right
 # Systemic path (bottom): FL3 and P3
 SENSOR_POSITIONS = {
-    "fl1": (0.22, 0.18),
+    "fl1": (0.78, 0.19),
     "fl2": (0.35, 0.75),
     "fl3": (0.23, 0.99),
-    "p1":  (0.78, 0.13),
+    "p1":  (0.14, 0.20),
     "p2":  (0.64, 0.72),
     "p3":  (0.75, 0.98),
 }
